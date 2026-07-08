@@ -1,1 +1,85 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS SNIPER PRO | 0.01 SOL</title>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <style>
+        :root { --bg: #050505; --accent: #00f2ff; --card: #111; --success: #00ff88; --danger: #ff3e3e; }
+        body { background: var(--bg); color: white; font-family: 'JetBrains Mono', monospace; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 800px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 15px; }
+        .logo { font-family: sans-serif; font-weight: bold; font-size: 22px; }
+        .logo span { color: var(--accent); }
+        .phantom-btn { background: #4e44ce; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #222; }
+        .stat-card span { font-size: 10px; color: #666; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        .stat-card h2 { margin: 0; font-size: 20px; color: var(--success); }
 
+        .main { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+        .settings { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #222; }
+        .settings h3 { font-size: 14px; margin-top: 0; color: var(--accent); margin-bottom: 15px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 10px; color: #666; margin-bottom: 5px; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 8px; border-radius: 5px; box-sizing: border-box; }
+        
+        .start-btn { width: 100%; background: var(--accent); color: black; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .start-btn.active { background: var(--danger); color: white; }
+
+        .terminal { background: #000; border-radius: 12px; border: 1px solid #222; height: 380px; display: flex; flex-direction: column; }
+        .terminal-header { background: #111; padding: 10px; font-size: 10px; color: #555; display: flex; justify-content: space-between; }
+        .logs { padding: 15px; font-size: 11px; overflow-y: auto; flex: 1; line-height: 1.5; color: #ccc; }
+        .green { color: var(--success); }
+        .red { color: var(--danger); }
+        .blue { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">NEXUS<span>SNIPER</span>.PRO</div>
+            <button id="connect-btn" class="phantom-btn">CONNECT PHANTOM</button>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card"><span>Live Wallet Balance</span><h2 id="balance">0.0000 SOL</h2></div>
+            <div class="stat-card"><span>Session PnL</span><h2 id="pnl">0.0000</h2></div>
+            <div class="stat-card"><span>Success Rate</span><h2 id="winrate">0%</h2></div>
+        </div>
+
+        <div class="main">
+            <aside class="settings">
+                <h3>STRATEGY</h3>
+                <div class="input-group">
+                    <label>TRADE SIZE (SOL)</label>
+                    <input type="number" id="trade-size" value="0.002" step="0.001">
+                </div>
+                <div class="input-group">
+                    <label>TAKE PROFIT (%)</label>
+                    <input type="number" id="tp-percent" value="40">
+                </div>
+                <div class="input-group">
+                    <label>STOP LOSS (%)</label>
+                    <input type="number" id="sl-percent" value="15">
+                </div>
+                <div class="input-group">
+                    <label>WIN-CHANCE FILTER (%)</label>
+                    <input type="number" id="min-conf" value="92">
+                </div>
+                <button id="start-btn" class="start-btn">START BOT</button>
+            </aside>
+            <section class="terminal">
+                <div class="terminal-header">
+                    <span>BLOCKCHAIN MONITOR</span>
+                    <span id="diag-phantom">Phantom: Not Connected</span>
+                </div>
+                <div id="log-box" class="logs">Koppel je wallet om te beginnen...</div>
+            </section>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
