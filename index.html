@@ -3,62 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Sniper Pro</title>
-    <link rel="stylesheet" href="style.css">
+    <title>NEXUS SNIPER PRO</title>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <style>
+        /* CSS DIRECT IN HTML VOOR 100% GARANTIE */
+        :root { --bg: #050505; --accent: #00f2ff; --card: #111; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 800px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 15px; }
+        .logo { font-size: 24px; font-weight: bold; }
+        .logo span { color: var(--accent); }
+        
+        /* DE KNOP: GEEN FOTO'S, GEEN SVG, GEEN FOUTEN */
+        .phantom-btn { 
+            background: #4e44ce; color: white; border: none; padding: 12px 24px; 
+            border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;
+        }
+        
+        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #222; }
+        .stat-card span { font-size: 10px; color: #666; text-transform: uppercase; }
+        .stat-card h2 { margin: 5px 0 0 0; font-family: monospace; }
+
+        .main { display: grid; grid-template-columns: 250px 1fr; gap: 20px; }
+        .settings { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #222; }
+        .settings label { display: block; font-size: 11px; color: #666; margin-bottom: 5px; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; box-sizing: border-box; }
+        
+        .start-btn { width: 100%; background: var(--accent); color: black; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        .terminal { background: #000; border-radius: 12px; border: 1px solid #222; height: 300px; overflow: hidden; display: flex; flex-direction: column; }
+        .terminal-header { background: #111; padding: 10px; font-size: 10px; color: #444; border-bottom: 1px solid #222; }
+        .logs { padding: 15px; font-family: monospace; font-size: 11px; overflow-y: auto; flex: 1; color: #00ff88; }
+        .success { color: #00ff88; }
+        .danger { color: #ff3e3e; }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <header class="main-header">
-            <div class="brand">NEXUS<span>PRO</span></div>
-            <button id="connect-btn" class="connect-wallet-btn">
-                <svg width="20" height="20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="40" fill="white"/>
-                </svg>
-                <span id="btn-text">Connect Phantom</span>
-            </button>
+    <div class="container">
+        <header>
+            <div class="logo">NEXUS<span>SNIPER</span></div>
+            <button id="connect-btn" class="phantom-btn">CONNECT PHANTOM</button>
         </header>
 
-        <section class="stats-overview">
-            <div class="stat-item">
-                <span class="label">Total PnL</span>
-                <div id="pnl" class="value">0.0000 SOL</div>
-            </div>
-            <div class="stat-item">
-                <span class="label">Winrate</span>
-                <div id="winrate" class="value">--%</div>
-            </div>
-            <div class="stat-item">
-                <span class="label">Wallet Balans</span>
-                <div id="balance" class="value">0.00 SOL</div>
-            </div>
-        </section>
+        <div class="stats">
+            <div class="stat-card"><span>PnL (SOL)</span><h2 id="pnl">0.0000</h2></div>
+            <div class="stat-card"><span>Winrate</span><h2 id="winrate">--%</h2></div>
+            <div class="stat-card"><span>Balance</span><h2 id="balance">0.000</h2></div>
+        </div>
 
-        <div class="dashboard-content">
-            <aside class="sidebar-settings">
-                <h3>Robot Config</h3>
-                <div class="input-box">
-                    <label>Trade Size (SOL)</label>
-                    <input type="number" id="trade-size" value="0.002" step="0.001">
-                </div>
-                <div class="input-box">
-                    <label>Min. Winrate Filter</label>
-                    <input type="number" id="min-winrate" value="85">
-                </div>
-                <div class="fee-info">
-                    <span class="fee-dot"></span> DYNAMIC AUTO-FEE ACTIVE
-                </div>
-                <button id="start-bot-btn" class="action-btn">START AUTO-TRADER</button>
+        <div class="main">
+            <aside class="settings">
+                <label>TRADE SIZE (SOL)</label>
+                <input type="number" id="trade-size" value="0.002" step="0.001">
+                <label>MIN WINRATE (%)</label>
+                <input type="number" id="min-win" value="85">
+                <button id="start-btn" class="start-btn">START BOT</button>
             </aside>
-
-            <section class="terminal-window">
-                <div class="terminal-top">
-                    <span>LIVE SCANNER FEED</span>
-                    <span id="pos-count">Positions: 0</span>
-                </div>
-                <div id="log-display" class="log-content">
-                    <div class="log-line system">> Systeem standby. Wachten op wallet...</div>
-                </div>
+            <section class="terminal">
+                <div class="terminal-header">LIVE BLOCKCHAIN FEED</div>
+                <div id="log-box" class="logs">Wachtend op wallet verbinding...</div>
             </section>
         </div>
     </div>
