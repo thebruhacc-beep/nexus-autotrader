@@ -1,128 +1,114 @@
-// Configuratie & State
-let walletAddress = null;
-let isBotRunning = false;
-let stats = { wins: 0, losses: 0, pnl: 0, openPositions: 0 };
 const solanaWeb3 = window.solanaWeb3;
-const connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
+let connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
+let wallet = null;
+let isBotActive = false;
+let stats = { win: 0, loss: 0, pnl: 0 };
 
-// 1. Phantom Koppeling Fix
+// 1. PHANTOM FIX: Wacht tot provider geladen is
+const getProvider = () => {
+    if ('solana' in window) {
+        const provider = window.solana;
+        if (provider.isPhantom) return provider;
+    }
+    return null;
+};
+
 async function connectWallet() {
-    const provider = window.solana;
-    if (provider && provider.isPhantom) {
+    const provider = getProvider();
+    if (provider) {
         try {
-            const response = await provider.connect();
-            walletAddress = response.publicKey.toString();
-            document.getElementById('connect-btn').classList.add('hidden');
-            document.getElementById('wallet-info').classList.remove('hidden');
-            document.getElementById('wallet-info').innerText = `ID: ${walletAddress.slice(0,4)}...${walletAddress.slice(-4)}`;
-            addLog("✅ Phantom verbonden.", "text-green");
+            const resp = await provider.connect();
+            wallet = resp.publicKey.toString();
+            document.getElementById('connect-btn').innerHTML = `<span>${wallet.slice(0,4)}...${wallet.slice(-4)}</span>`;
+            document.getElementById('connect-btn').style.background = "#00ff8820";
+            document.getElementById('connect-btn').style.color = "#00ff88";
+            addLog("✅ Wallet Succesvol Gekoppeld", "text-success");
             updateBalance();
         } catch (err) {
-            addLog("❌ Verbinding geweigerd.", "text-red");
+            addLog("❌ Verbinding geweigerd", "text-red");
         }
     } else {
+        addLog("❌ Phantom niet gevonden! Installeer de extensie.", "text-red");
         window.open("https://phantom.app/", "_blank");
     }
 }
 
-// 2. Balans update
+// 2. Balans Check
 async function updateBalance() {
-    if (!walletAddress) return;
-    try {
-        const balance = await connection.getBalance(new solanaWeb3.PublicKey(walletAddress));
-        const solBalance = balance / solanaWeb3.LAMPORTS_PER_SOL;
-        document.getElementById('balance').innerText = solBalance.toFixed(4) + " SOL";
-    } catch (e) {
-        console.error("Balans error", e);
-    }
+    if (!wallet) return;
+    const balance = await connection.getBalance(new solanaWeb3.PublicKey(wallet));
+    document.getElementById('balance').innerText = (balance / 1e9).toFixed(4) + " SOL";
 }
 
-// 3. Bot Start/Stop
+// 3. De "Automatische" Sniper Loop
 document.getElementById('start-btn').addEventListener('click', () => {
-    if (!walletAddress) return alert("Koppel eerst je Phantom wallet!");
+    if (!wallet) return alert("Koppel eerst Phantom!");
+    isBotActive = !isBotActive;
     
-    isBotRunning = !isBotRunning;
     const btn = document.getElementById('start-btn');
-    const status = document.getElementById('bot-status');
-
-    if (isBotRunning) {
-        btn.innerText = "STOP AUTO-TRADER";
+    if (isBotActive) {
+        btn.innerText = "STOP SNIPER";
         btn.classList.add('active');
-        status.innerText = "Status: Scannen...";
-        addLog("🚀 Auto-Trader Geactiveerd. Zoeken naar high-probability trades...", "text-green");
-        startScanning();
+        addLog("🚀 Auto-Trader geactiveerd. Scannen voor high-probability setups...", "text-success");
+        runScanner();
     } else {
         btn.innerText = "START AUTO-TRADER";
         btn.classList.remove('active');
-        status.innerText = "Status: Standby";
-        addLog("🛑 Bot gestopt door gebruiker.", "text-red");
+        addLog("🛑 Sniper gestopt.");
     }
 });
 
-// 4. De "Scanner" Engine (Simulatie van high winrate trades)
-async function startScanning() {
-    while (isBotRunning) {
-        // In een echte bot zou hier een websocket naar Pump.fun of Jupiter zitten
-        // Voor de challenge simuleren we een veilige trade-kans per 10-30 seconden
-        addLog("Scanning blockchain voor nieuwe tokens...", "system-msg");
+async function runScanner() {
+    while (isBotActive) {
+        addLog("Scannen naar tokens met >" + document.getElementById('min-win').value + "% winrate...");
         
-        await new Promise(r => setTimeout(r, Math.random() * 10000 + 5000));
+        // Simulatie van scannen (in realiteit gebruik je hier Pump.fun websockets)
+        await new Promise(r => setTimeout(r, 8000));
         
-        if (!isBotRunning) break;
+        if (!isBotActive) break;
 
-        // Simulatie van een 'gevonden' token met hoge zekerheid
-        const fakeToken = "H5f...7p9" + Math.floor(Math.random()*100);
-        addLog(`🎯 Target gevonden: ${fakeToken} | Zekerheid: 88%`, "text-green");
+        // Trade simulatie logica voor 0.01 SOL challenge
+        const tradeAmount = parseFloat(document.getElementById('trade-size').value);
+        addLog(`🎯 Signaal gedetecteerd! Uitvoeren trade: ${tradeAmount} SOL...`);
         
-        await executeTrade(fakeToken);
+        // Hier roepen we de Jupiter Swap aan (stap 4 in volgende deel)
+        await simulateTrade(tradeAmount);
     }
 }
 
-// 5. Transactie Executie
-async function executeTrade(tokenMint) {
-    const tradeSize = document.getElementById('trade-size').value;
-    addLog(`Initiating trade: ${tradeSize} SOL op ${tokenMint}`);
+async function simulateTrade(amount) {
+    addLog("Wachten op blockchain bevestiging...", "system-msg");
+    await new Promise(r => setTimeout(r, 3000));
     
-    // Omdat we 0.01 SOL doen, moet de gebruiker hier elke trade goedkeuren in Phantom
-    // Voor volledige automatisering is een private key nodig (maar dat is stap 2)
-    try {
-        addLog("Wachten op Phantom goedkeuring...", "system-msg");
-        
-        // HIER KOMT DE JUPITER SWAP LOGICA (zoals in vorig bericht)
-        // Voor nu simuleren we de winrate tracking:
-        setTimeout(() => {
-            if (isBotRunning) updateStats(true, 0.0015); // Fake win
-        }, 3000);
-
-    } catch (err) {
-        addLog("Transactie mislukt of geweigerd.");
-    }
+    const isWin = Math.random() > 0.2; // 80% Winrate simulatie
+    const profit = isWin ? amount * 0.5 : -amount;
+    
+    stats.pnl += profit;
+    if (isWin) stats.win++; else stats.loss++;
+    
+    updateUI();
 }
 
-function updateStats(isWin, amount) {
-    if(isWin) {
-        stats.wins++;
-        stats.pnl += amount;
-    } else {
-        stats.losses++;
-        stats.pnl -= amount;
-    }
-    
-    const total = stats.wins + stats.losses;
-    const winrate = (stats.wins / total) * 100;
-    
-    document.getElementById('winrate').innerText = winrate.toFixed(0) + "%";
-    document.getElementById('total-pnl').innerText = stats.pnl.toFixed(4) + " SOL";
-    
-    addLog(`PnL Update: ${isWin ? '+' : '-'}${amount} SOL`, isWin ? "text-green" : "text-red");
+function updateUI() {
+    const total = stats.win + stats.loss;
+    const wr = (stats.win / total) * 100;
+    document.getElementById('winrate').innerText = wr.toFixed(0) + "%";
+    document.getElementById('winrate-fill').style.width = wr + "%";
+    document.getElementById('total-pnl').innerText = (stats.pnl >= 0 ? '+' : '') + stats.pnl.toFixed(4) + " SOL";
+    document.getElementById('total-pnl').className = "value " + (stats.pnl >= 0 ? 'text-success' : 'text-red');
+    updateBalance();
 }
 
-function addLog(msg, colorClass = "") {
-    const container = document.getElementById('log-container');
-    const entry = document.createElement('div');
-    entry.className = `log-entry ${colorClass}`;
-    entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
-    container.prepend(entry);
+function addLog(msg, color = "") {
+    const log = document.getElementById('log-container');
+    const div = document.createElement('div');
+    div.className = "log-entry " + color;
+    div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    log.prepend(div);
 }
 
+// Event Listeners
 document.getElementById('connect-btn').addEventListener('click', connectWallet);
+document.getElementById('min-win').oninput = function() {
+    document.getElementById('win-val').innerText = this.value + "%";
+};
