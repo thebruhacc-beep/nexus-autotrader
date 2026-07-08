@@ -4,46 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXUS SNIPER PRO</title>
+    <!-- De Solana Bibliotheek -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
     <style>
-        /* CSS DIRECT IN HTML VOOR 100% GARANTIE */
-        :root { --bg: #050505; --accent: #00f2ff; --card: #111; }
-        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        :root { --bg: #050505; --accent: #00f2ff; --card: #111; --success: #00ff88; }
+        body { background: var(--bg); color: white; font-family: 'Courier New', monospace; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { width: 100%; max-width: 800px; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #222; padding-bottom: 15px; }
-        .logo { font-size: 24px; font-weight: bold; }
+        .logo { font-size: 24px; font-weight: bold; font-family: sans-serif; }
         .logo span { color: var(--accent); }
         
-        /* DE KNOP: GEEN FOTO'S, GEEN SVG, GEEN FOUTEN */
         .phantom-btn { 
             background: #4e44ce; color: white; border: none; padding: 12px 24px; 
-            border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;
+            border-radius: 8px; font-weight: bold; cursor: pointer; font-family: sans-serif;
         }
-        
+
         .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .stat-card { background: var(--card); padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #222; }
-        .stat-card span { font-size: 10px; color: #666; text-transform: uppercase; }
-        .stat-card h2 { margin: 5px 0 0 0; font-family: monospace; }
+        .stat-card span { font-size: 10px; color: #666; text-transform: uppercase; display: block; }
+        .stat-card h2 { margin: 5px 0 0 0; font-size: 24px; color: var(--success); }
 
-        .main { display: grid; grid-template-columns: 250px 1fr; gap: 20px; }
+        .main { display: grid; grid-template-columns: 260px 1fr; gap: 20px; }
         .settings { background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid #222; }
-        .settings label { display: block; font-size: 11px; color: #666; margin-bottom: 5px; }
-        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 10px; border-radius: 5px; margin-bottom: 15px; box-sizing: border-box; }
+        .settings label { display: block; font-size: 11px; color: #666; margin-bottom: 8px; margin-top: 10px; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 10px; border-radius: 5px; box-sizing: border-box; }
         
-        .start-btn { width: 100%; background: var(--accent); color: black; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .start-btn { width: 100%; background: var(--accent); color: black; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 20px; }
         
-        .terminal { background: #000; border-radius: 12px; border: 1px solid #222; height: 300px; overflow: hidden; display: flex; flex-direction: column; }
-        .terminal-header { background: #111; padding: 10px; font-size: 10px; color: #444; border-bottom: 1px solid #222; }
-        .logs { padding: 15px; font-family: monospace; font-size: 11px; overflow-y: auto; flex: 1; color: #00ff88; }
-        .success { color: #00ff88; }
-        .danger { color: #ff3e3e; }
+        .terminal { background: #000; border-radius: 12px; border: 1px solid #222; height: 350px; display: flex; flex-direction: column; }
+        .terminal-header { background: #111; padding: 10px; font-size: 10px; color: #555; display: flex; justify-content: space-between; }
+        .logs { padding: 15px; font-size: 11px; overflow-y: auto; flex: 1; line-height: 1.4; }
+        .log-entry { margin-bottom: 5px; }
+        .blue { color: var(--accent); }
+        .green { color: var(--success); }
+        .red { color: #ff3e3e; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <div class="logo">NEXUS<span>SNIPER</span></div>
-            <button id="connect-btn" class="phantom-btn">CONNECT PHANTOM</button>
+            <button id="connect-btn" class="phantom-btn">CONNECT WALLET</button>
         </header>
 
         <div class="stats">
@@ -58,11 +59,16 @@
                 <input type="number" id="trade-size" value="0.002" step="0.001">
                 <label>MIN WINRATE (%)</label>
                 <input type="number" id="min-win" value="85">
+                <label>BOT STATUS</label>
+                <div id="bot-status" style="font-size: 12px; color: #444;">Standby</div>
                 <button id="start-btn" class="start-btn">START BOT</button>
             </aside>
             <section class="terminal">
-                <div class="terminal-header">LIVE BLOCKCHAIN FEED</div>
-                <div id="log-box" class="logs">Wachtend op wallet verbinding...</div>
+                <div class="terminal-header">
+                    <span>NEXUS TERMINAL v1.0.4</span>
+                    <span id="diag-phantom">Phantom: Checking...</span>
+                </div>
+                <div id="log-box" class="logs"></div>
             </section>
         </div>
     </div>
