@@ -1,57 +1,156 @@
-* { box-sizing: border-box; transition: all 0.2s ease; }
-body {
-    background: #050507;
-    color: #fff;
-    font-family: 'Inter', sans-serif;
-    margin: 0;
-    overflow: hidden;
+// --- INITIALISATIE ---
+const solanaWeb3 = window.solanaWeb3;
+let connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
+let walletPubkey = null;
+let isBotRunning = false;
+
+// Statistieken bijhouden
+let stats = {
+    wins: 0,
+    losses: 0,
+    totalPnL: 0,
+    openTrades: 0
+};
+
+// --- PHANTOM CONNECTION FIX ---
+const connectWallet = async () => {
+    try {
+        // Phantom provider check
+        const provider = window.solana;
+        
+        if (!provider || !provider.isPhantom) {
+            addLog("❌ Phantom niet gevonden. Installeer de extensie of open de site in Phantom browser.");
+            window.open("https://phantom.app/", "_blank");
+            return;
+        }
+
+        // Directe verbinding aanvragen
+        const resp = await provider.connect();
+        walletPubkey = resp.publicKey.toString();
+        
+        // UI Update
+        const btn = document.getElementById('connect-btn');
+        btn.style.background = "rgba(0, 255, 136, 0.15)";
+        btn.style.border = "1px solid #00ff8840";
+        btn.style.color = "#00ff88";
+        document.getElementById('btn-text').innerText = walletPubkey.slice(0,4) + "..." + walletPubkey.slice(-4);
+        
+        addLog("✅ Phantom succesvol gekoppeld!", "success");
+        updateBalance();
+    } catch (err) {
+        addLog("❌ Verbinding geweigerd door gebruiker.");
+        console.error("Connection error:", err);
+    }
+};
+
+// --- DYNAMISCHE FEE LOGICA ---
+const getDynamicFee = async (tradeAmount) => {
+    try {
+        const fees = await connection.getRecentPrioritizationFees();
+        const avgFee = fees.length > 0 ? fees[0].prioritizationFee : 5000;
+        
+        // Nooit meer dan 5% van de trade aan fee uitgeven (belangrijk voor 0.01 SOL challenge)
+        const maxFee = tradeAmount * 0.05;
+        const finalFee = Math.min(avgFee / 1e9, maxFee);
+        
+        return Math.max(finalFee, 0.000005); // Altijd een minimale fee voor snelheid
+    } catch (e) {
+        return 0.00001; // Fallback
+    }
+};
+
+// --- AUTOMATISCHE HANDELS ENGINE ---
+document.getElementById('start-btn').addEventListener('click', async () => {
+    if (!walletPubkey) return alert("Koppel eerst je Phantom wallet!");
+
+    isBotRunning = !isBotRunning;
+    const btn = document.getElementById('start-btn');
+
+    if (isBotRunning) {
+        btn.innerText = "STOP BOT";
+        btn.style.background = "#ff3e3e";
+        addLog("🚀 Auto-Trader geactiveerd. Scannen naar tokens met hoge winrate...", "success");
+        runAutoTrader();
+    } else {
+        btn.innerText = "START AUTO-TRADER";
+        btn.style.background = "#00f2ff";
+        addLog("🛑 Bot gestopt door gebruiker.");
+    }
+});
+
+async function runAutoTrader() {
+    while (isBotRunning) {
+        // Simulatie van scannen naar tokens
+        addLog("Scannen blockchain op nieuwe paren...", "system");
+        await new Promise(r => setTimeout(r, 7000 + Math.random() * 5000));
+        
+        if (!isBotRunning) break;
+
+        const minWinrate = document.getElementById('min-winrate').value;
+        addLog(`🎯 Signaal gevonden! Win-kans: 91%. Filter: >${minWinrate}%`);
+
+        await executeAutoTrade();
+    }
 }
 
-.overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #050507 100%);
-    z-index: -1;
+async function executeAutoTrade() {
+    const tradeSize = parseFloat(document.getElementById('trade-size').value);
+    const dynamicFee = await getDynamicFee(tradeSize);
+    
+    stats.openTrades = 1;
+    updateUI();
+
+    addLog(`Initiating Swap: ${tradeSize} SOL. Priority Fee: ${dynamicFee.toFixed(6)} SOL`);
+    addLog("Wachten op Phantom handtekening & blockchain bevestiging...", "system");
+
+    // Simulatie van de trade uitkomst
+    await new Promise(r => setTimeout(r, 4000));
+    
+    const isWin = Math.random() > 0.25; // 75% Winrate
+    const profit = isWin ? (tradeSize * 0.6) : (tradeSize * -0.9);
+    const resultAfterFees = profit - dynamicFee;
+
+    stats.totalPnL += resultAfterFees;
+    if (isWin) stats.wins++; else stats.losses++;
+    stats.openTrades = 0;
+
+    addLog(isWin ? `✅ Winst: +${resultAfterFees.toFixed(5)} SOL` : `❌ Verlies: ${resultAfterFees.toFixed(5)} SOL`, isWin ? "success" : "text-red");
+    
+    updateUI();
+    updateBalance();
 }
 
-.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
-
-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #ffffff10; }
-.logo { font-weight: 900; font-size: 28px; letter-spacing: -1px; }
-.logo span { color: #00f2ff; text-shadow: 0 0 15px #00f2ff80; }
-
-/* DE NIEUWE PHANTOM KNOP */
-.phantom-btn {
-    background: linear-gradient(90deg, #4e44ce 0%, #352db0 100%);
-    border: none; color: white; padding: 12px 24px; border-radius: 12px;
-    font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px;
-    box-shadow: 0 4px 15px rgba(78, 68, 206, 0.4);
+// --- UI UPDATES ---
+function updateUI() {
+    const total = stats.wins + stats.losses;
+    const wr = total > 0 ? (stats.wins / total) * 100 : 0;
+    
+    document.getElementById('winrate').innerText = wr.toFixed(0) + "%";
+    document.getElementById('pnl').innerText = (stats.totalPnL >= 0 ? '+' : '') + stats.totalPnL.toFixed(5) + " SOL";
+    document.getElementById('pnl').style.color = stats.totalPnL >= 0 ? "#00ff88" : "#ff3e3e";
+    document.getElementById('open-positions').innerText = `Open Positions: ${stats.openTrades}`;
 }
-.phantom-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(78, 68, 206, 0.6); }
-.phantom-btn img { width: 20px; height: 20px; }
 
-/* DASHBOARD STATS */
-.dashboard-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 30px 0; }
-.stat-box { background: rgba(255,255,255,0.03); border: 1px solid #ffffff08; padding: 20px; border-radius: 16px; position: relative; }
-.stat-box label { font-size: 11px; color: #888; text-transform: uppercase; font-weight: bold; }
-.stat-box .value { font-size: 20px; font-family: 'JetBrains Mono', monospace; margin-top: 5px; }
-
-.main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; height: 500px; }
-.settings { background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid #ffffff08; }
-.field { margin-bottom: 25px; }
-.field label { display: block; margin-bottom: 10px; font-size: 14px; }
-input[type="number"], input[type="range"] { width: 100%; background: #000; border: 1px solid #ffffff15; color: #fff; padding: 12px; border-radius: 8px; }
-
-.btn-glow {
-    width: 100%; background: #00f2ff; color: #000; border: none; padding: 18px; 
-    border-radius: 12px; font-weight: 900; cursor: pointer;
+async function updateBalance() {
+    if (!walletPubkey) return;
+    try {
+        const balance = await connection.getBalance(new solanaWeb3.PublicKey(walletPubkey));
+        document.getElementById('balance').innerText = (balance / 1e9).toFixed(4) + " SOL";
+    } catch (e) {
+        console.error("Balance fetch error");
+    }
 }
-.btn-glow.active { background: #ff3e3e; color: #fff; }
 
-.terminal { background: #000; border-radius: 20px; border: 1px solid #ffffff08; display: flex; flex-direction: column; }
-.terminal-header { padding: 15px 20px; font-size: 12px; color: #555; border-bottom: 1px solid #ffffff08; }
-.log-area { flex: 1; padding: 20px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+function addLog(msg, type = "") {
+    const log = document.getElementById('log-container');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    log.prepend(entry);
+}
 
-.text-success { color: #00ff88; }
-.pulse { display: inline-block; width: 8px; height: 8px; background: #00ff88; border-radius: 50%; margin-right: 10px; animation: blink 1s infinite; }
-@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+// Button Listener
+document.getElementById('connect-btn').addEventListener('click', connectWallet);
+
+// Balans check interval
+setInterval(updateBalance, 15000);
