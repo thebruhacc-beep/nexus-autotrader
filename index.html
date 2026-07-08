@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus SOL Sniper</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">NEXUS<span>SNIPER</span></div>
+            <button id="connect-btn" class="btn-primary">Connect Phantom</button>
+        </header>
+        <main>
+            <div class="stats-grid">
+                <div class="stat-card"><p>Balans</p><h2 id="balance">0.00 SOL</h2></div>
+                <div class="stat-card"><p>Status</p><h2 id="status" class="text-green">Ready</h2></div>
+            </div>
+            <div class="sniper-box">
+                <h3>0.01 SOL Sniper</h3>
+                <input type="text" id="mint-address" placeholder="Plak Token Mint Adres hier...">
+                <button id="snipe-btn" class="btn-snipe">SNIPE TOKEN</button>
+            </div>
+            <div id="log-container" class="logs">> Systeem klaar voor start...</div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
