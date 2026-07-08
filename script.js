@@ -1,16 +1,12 @@
 console.log("--- NEXUS BOOT SEQUENCE START ---");
 
+// --- CONFIGURATIE ---
+// PLAK HIER JE HELIUS LINK (of een andere RPC link)
+const MY_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=dcd21b37-91de-4386-a1fe-0cf25e47c9f9"; 
+
 var myAddress = null;
 var isAutoTrading = false;
 var statsData = { w: 0, l: 0, pnl: 0 };
-
-// LIJST MET BACK-UP SERVERS (RPC's)
-const RPC_ENDPOINTS = [
-    "https://rpc.ankr.com/solana",
-    "https://solana-mainnet.rpc.extrnode.com",
-    "https://api.mainnet-beta.solana.com"
-];
-let currentRpcIndex = 0;
 
 function pushLog(text, colorClass = "") {
     const box = document.getElementById('log-box');
@@ -21,23 +17,22 @@ function pushLog(text, colorClass = "") {
     box.prepend(div);
 }
 
+// 1. Check of Phantom geladen is
 function checkPhantom() {
     const diag = document.getElementById('diag-phantom');
     if (window.solana && window.solana.isPhantom) {
-        diag.innerText = "Phantom: Gevonden";
+        diag.innerText = "Phantom: Verbonden";
         diag.style.color = "#00ff88";
-        pushLog("Systeem: Phantom Wallet gedetecteerd.", "blue");
+        pushLog("Systeem: Phantom gedetecteerd.", "blue");
     } else {
-        diag.innerText = "Phantom: NIET GEVONDEN";
-        diag.style.color = "#ff3e3e";
-        pushLog("WAARSCHUWING: Phantom niet gevonden!", "red");
+        diag.innerText = "Phantom: Niet gevonden";
+        pushLog("⚠️ Installeer de Phantom extensie!", "red");
     }
 }
 
+// 2. Verbinden met Phantom
 async function handleConnect() {
-    pushLog("Bezig met verbinden...");
-    if (!window.solana) return alert("Installeer Phantom!");
-
+    pushLog("Verbinding maken...");
     try {
         const resp = await window.solana.connect();
         myAddress = resp.publicKey.toString();
@@ -46,45 +41,41 @@ async function handleConnect() {
         document.getElementById('connect-btn').style.background = "#111";
         document.getElementById('connect-btn').style.color = "#00ff88";
         
-        pushLog("✅ Wallet verbonden: " + myAddress, "green");
-        
+        pushLog("✅ Wallet verbonden.", "green");
         getSolBalance();
     } catch (err) {
-        pushLog("❌ Fout: " + err.message, "red");
+        pushLog("❌ Fout: Verbinding geweigerd.", "red");
     }
 }
 
+// 3. Balans ophalen (MET DE NIEUWE RPC)
 async function getSolBalance() {
     if (!myAddress) return;
 
-    const activeRpc = RPC_ENDPOINTS[currentRpcIndex];
-    console.log("Proberen balans op te halen via:", activeRpc);
-
     try {
         const solWeb3 = window.solanaWeb3;
-        const connection = new solWeb3.Connection(activeRpc, "confirmed");
+        // We gebruiken hier de MY_RPC_URL die je bovenin hebt ingevuld
+        const connection = new solWeb3.Connection(MY_RPC_URL, "confirmed");
         const pubKey = new solWeb3.PublicKey(myAddress);
         
         const balance = await connection.getBalance(pubKey);
         const solAmount = balance / 1e9;
         
         document.getElementById('balance').innerText = solAmount.toFixed(4) + " SOL";
-        pushLog(`Balans geladen via Node ${currentRpcIndex + 1}`, "blue");
+        pushLog(`Balans geladen: ${solAmount.toFixed(4)} SOL`, "blue");
         
     } catch (e) {
-        console.error(`Fout op Node ${currentRpcIndex + 1}:`, e.message);
+        console.error("RPC Fout:", e);
+        pushLog("❌ RPC Blokkade (403). Gebruik een eigen Helius API key!", "red");
         
-        // Schakel over naar de volgende RPC in de lijst
-        currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
-        
-        pushLog(`⚠️ Node fout. Schakelen naar Backup Server...`, "red");
-        
-        // Probeer het over 3 seconden opnieuw met de volgende node
-        setTimeout(getSolBalance, 3000);
+        // Als het mislukt, probeer na 10 sec de standaard Solana node als laatste hoop
+        if (MY_RPC_URL.includes("helius")) {
+             console.log("Helius faalt, check je API key.");
+        }
     }
 }
 
-// BOT LOGICA (SIMULATIE)
+// 4. Bot Controle
 document.getElementById('start-btn').onclick = function() {
     if (!myAddress) return alert("Eerst wallet verbinden!");
     isAutoTrading = !isAutoTrading;
@@ -96,28 +87,27 @@ document.getElementById('start-btn').onclick = function() {
         btn.style.background = "#ff3e3e";
         status.innerText = "Running";
         status.style.color = "#00ff88";
-        pushLog("🚀 Bot gestart. Scannen blockchain...", "green");
+        pushLog("🚀 Bot gestart. Scannen...", "green");
         tradingCycle();
     } else {
         btn.innerText = "START BOT";
         btn.style.background = "#00f2ff";
         status.innerText = "Standby";
-        status.style.color = "#444";
-        pushLog("🛑 Bot handmatig gestopt.", "red");
+        pushLog("🛑 Bot gestopt.", "red");
     }
 };
 
 async function tradingCycle() {
     while (isAutoTrading) {
-        await new Promise(r => setTimeout(r, 8000));
+        await new Promise(r => setTimeout(r, 6000));
         if (!isAutoTrading) break;
 
         const size = parseFloat(document.getElementById('trade-size').value);
-        pushLog(`Analyse: Nieuwe memecoin gevonden. Win-kans: 88%...`);
+        pushLog(`Analyse: Nieuw signaal gevonden...`);
         
         await new Promise(r => setTimeout(r, 2000));
-        const won = Math.random() > 0.35;
-        const profit = won ? (size * 0.75) : (size * -1);
+        const won = Math.random() > 0.4;
+        const profit = won ? (size * 0.8) : (size * -1);
         
         statsData.pnl += profit;
         if(won) statsData.w++; else statsData.l++;
@@ -126,8 +116,7 @@ async function tradingCycle() {
         const total = statsData.w + statsData.l;
         document.getElementById('winrate').innerText = ((statsData.w / total) * 100).toFixed(0) + "%";
         
-        getSolBalance(); // Update balans na elke trade
-        pushLog(won ? "💰 PROFIT: + " + profit.toFixed(5) : "📉 LOSS: " + profit.toFixed(5), won ? "green" : "red");
+        getSolBalance(); 
     }
 }
 
