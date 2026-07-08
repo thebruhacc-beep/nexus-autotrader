@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+solders
+solana
+httpx
+python-dotenv
+base58
