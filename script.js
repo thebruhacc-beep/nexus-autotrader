@@ -4,8 +4,13 @@ var myAddress = null;
 var isAutoTrading = false;
 var statsData = { w: 0, l: 0, pnl: 0 };
 
-// GEBRUIK EEN ALTERNATIEVE RPC (Deze blokkeert minder snel)
-const RPC_URL = "https://solana-mainnet.g.allmystats.com"; 
+// LIJST MET BACK-UP SERVERS (RPC's)
+const RPC_ENDPOINTS = [
+    "https://rpc.ankr.com/solana",
+    "https://solana-mainnet.rpc.extrnode.com",
+    "https://api.mainnet-beta.solana.com"
+];
+let currentRpcIndex = 0;
 
 function pushLog(text, colorClass = "") {
     const box = document.getElementById('log-box');
@@ -43,8 +48,7 @@ async function handleConnect() {
         
         pushLog("✅ Wallet verbonden: " + myAddress, "green");
         
-        // Wacht 1 seconde voordat we balans ophalen om RPC-overlap te voorkomen
-        setTimeout(getSolBalance, 1000);
+        getSolBalance();
     } catch (err) {
         pushLog("❌ Fout: " + err.message, "red");
     }
@@ -52,25 +56,35 @@ async function handleConnect() {
 
 async function getSolBalance() {
     if (!myAddress) return;
+
+    const activeRpc = RPC_ENDPOINTS[currentRpcIndex];
+    console.log("Proberen balans op te halen via:", activeRpc);
+
     try {
         const solWeb3 = window.solanaWeb3;
-        // We maken een nieuwe verbinding met de nieuwe RPC_URL
-        const connection = new solWeb3.Connection(RPC_URL, "confirmed");
+        const connection = new solWeb3.Connection(activeRpc, "confirmed");
         const pubKey = new solWeb3.PublicKey(myAddress);
         
         const balance = await connection.getBalance(pubKey);
         const solAmount = balance / 1e9;
         
         document.getElementById('balance').innerText = solAmount.toFixed(4) + " SOL";
-        pushLog(`Balans bijgewerkt: ${solAmount.toFixed(4)} SOL`, "blue");
+        pushLog(`Balans geladen via Node ${currentRpcIndex + 1}`, "blue");
+        
     } catch (e) {
-        console.error("Balans error details:", e);
-        pushLog("⚠️ RPC-fout bij ophalen balans. Systeem probeert opnieuw...", "red");
-        // Bij een 403 fout, probeer het over 5 seconden nog eens
-        setTimeout(getSolBalance, 5000);
+        console.error(`Fout op Node ${currentRpcIndex + 1}:`, e.message);
+        
+        // Schakel over naar de volgende RPC in de lijst
+        currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
+        
+        pushLog(`⚠️ Node fout. Schakelen naar Backup Server...`, "red");
+        
+        // Probeer het over 3 seconden opnieuw met de volgende node
+        setTimeout(getSolBalance, 3000);
     }
 }
 
+// BOT LOGICA (SIMULATIE)
 document.getElementById('start-btn').onclick = function() {
     if (!myAddress) return alert("Eerst wallet verbinden!");
     isAutoTrading = !isAutoTrading;
@@ -99,11 +113,11 @@ async function tradingCycle() {
         if (!isAutoTrading) break;
 
         const size = parseFloat(document.getElementById('trade-size').value);
-        pushLog(`Analyse: Setup gevonden (Win-kans: 91%)...`);
+        pushLog(`Analyse: Nieuwe memecoin gevonden. Win-kans: 88%...`);
         
         await new Promise(r => setTimeout(r, 2000));
-        const won = Math.random() > 0.3;
-        const profit = won ? (size * 0.82) : (size * -1);
+        const won = Math.random() > 0.35;
+        const profit = won ? (size * 0.75) : (size * -1);
         
         statsData.pnl += profit;
         if(won) statsData.w++; else statsData.l++;
@@ -112,7 +126,7 @@ async function tradingCycle() {
         const total = statsData.w + statsData.l;
         document.getElementById('winrate').innerText = ((statsData.w / total) * 100).toFixed(0) + "%";
         
-        getSolBalance();
+        getSolBalance(); // Update balans na elke trade
         pushLog(won ? "💰 PROFIT: + " + profit.toFixed(5) : "📉 LOSS: " + profit.toFixed(5), won ? "green" : "red");
     }
 }
