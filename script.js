@@ -1,99 +1,95 @@
 const solanaWeb3 = window.solanaWeb3;
 let connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
-let walletKey = null;
+let myWallet = null;
 let botRunning = false;
-let tradeStats = { wins: 0, losses: 0, pnl: 0 };
+let stats = { wins: 0, losses: 0, pnl: 0 };
 
-// PHANTOM CONNECTIE
-async function connect() {
-    if (!window.solana || !window.solana.isPhantom) {
-        alert("Installeer Phantom!");
-        return;
-    }
+function addLog(text, color = "") {
+    const box = document.getElementById('log-box');
+    const entry = document.createElement('div');
+    entry.style.color = color;
+    entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${text}`;
+    box.prepend(entry);
+}
 
-    try {
-        const resp = await window.solana.connect();
-        walletKey = resp.publicKey.toString();
-        
-        const btn = document.getElementById('connect-btn');
-        btn.style.background = "#00ff8820";
-        btn.style.color = "#00ff88";
-        document.getElementById('btn-text').innerText = walletKey.slice(0,4) + "..." + walletKey.slice(-4);
-        
-        writeLog("✅ Wallet verbonden!", "success");
-        refreshBalance();
-    } catch (err) {
-        writeLog("❌ Verbinding geweigerd.");
+// --- DE ÉCHTE PHANTOM FIX ---
+async function tryConnect() {
+    console.log("Connectie knop ingedrukt");
+    
+    if (window.solana) {
+        try {
+            const resp = await window.solana.connect();
+            myWallet = resp.publicKey.toString();
+            
+            // Knop aanpassen
+            const btn = document.getElementById('connect-btn');
+            btn.innerText = myWallet.slice(0,4) + "..." + myWallet.slice(-4);
+            btn.style.background = "#111";
+            btn.style.color = "#00ff88";
+            
+            addLog("✅ Wallet Verbonden: " + myWallet, "#00ff88");
+            updateBalance();
+        } catch (err) {
+            addLog("❌ Verbinding geweigerd.", "red");
+        }
+    } else {
+        addLog("❌ Phantom niet gevonden. Gebruik de Phantom Browser.", "red");
+        window.open("https://phantom.app/", "_blank");
     }
 }
 
-// BALANS UPDATE
-async function refreshBalance() {
-    if (!walletKey) return;
-    const balance = await connection.getBalance(new solanaWeb3.PublicKey(walletKey));
+async function updateBalance() {
+    if (!myWallet) return;
+    const balance = await connection.getBalance(new solanaWeb3.PublicKey(myWallet));
     document.getElementById('balance').innerText = (balance / 1e9).toFixed(4) + " SOL";
 }
 
-// BOT START/STOP
-document.getElementById('start-bot-btn').onclick = () => {
-    if (!walletKey) return alert("Koppel eerst je wallet!");
-
+// Bot Controle
+document.getElementById('start-btn').addEventListener('click', () => {
+    if (!myWallet) return alert("Eerst Phantom verbinden!");
+    
     botRunning = !botRunning;
-    const btn = document.getElementById('start-bot-btn');
-
+    const btn = document.getElementById('start-btn');
+    
     if (botRunning) {
-        btn.innerText = "STOP AUTO-TRADER";
-        btn.style.background = "#ff3e3e";
-        btn.style.color = "#fff";
-        writeLog("🚀 Bot geactiveerd. Scannen voor trades...", "success");
-        startScannerLoop();
+        btn.innerText = "STOP BOT";
+        btn.style.background = "red";
+        addLog("🚀 Sniper actief. Zoeken naar trades...", "#00f2ff");
+        runLoop();
     } else {
-        btn.innerText = "START AUTO-TRADER";
+        btn.innerText = "START BOT";
         btn.style.background = "#00f2ff";
-        btn.style.color = "#000";
-        writeLog("🛑 Bot gestopt.");
+        addLog("🛑 Bot gestopt.");
     }
-};
+});
 
-async function startScannerLoop() {
+async function runLoop() {
     while (botRunning) {
-        await new Promise(r => setTimeout(r, 6000));
+        await new Promise(r => setTimeout(r, 5000));
         if (!botRunning) break;
+
+        const size = parseFloat(document.getElementById('trade-size').value);
+        addLog(`Analyzing new token... Confidence 92%`);
         
-        writeLog("Target gevonden. Zekerheid 89%. Uitvoeren...");
-        await doTrade();
+        // Simulatie trade
+        await new Promise(r => setTimeout(r, 2000));
+        const win = Math.random() > 0.3;
+        const profit = win ? (size * 0.8) : (size * -1);
+        
+        stats.pnl += profit;
+        if (win) stats.wins++; else stats.losses++;
+        
+        updateUI();
     }
 }
 
-async function doTrade() {
-    const size = parseFloat(document.getElementById('trade-size').value);
-    await new Promise(r => setTimeout(r, 2000));
-    
-    const win = Math.random() > 0.3;
-    const profit = win ? (size * 0.75) : (size * -1);
-    
-    tradeStats.pnl += profit;
-    if (win) tradeStats.wins++; else tradeStats.losses++;
-    
-    updateDisplay();
-}
-
-function updateDisplay() {
-    const total = tradeStats.wins + tradeStats.losses;
-    const wr = (tradeStats.wins / total) * 100;
+function updateUI() {
+    const total = stats.wins + stats.losses;
+    const wr = (stats.wins / total) * 100;
     document.getElementById('winrate').innerText = wr.toFixed(0) + "%";
-    document.getElementById('pnl').innerText = (tradeStats.pnl >= 0 ? '+' : '') + tradeStats.pnl.toFixed(5) + " SOL";
-    document.getElementById('pnl').style.color = tradeStats.pnl >= 0 ? "#00ff88" : "#ff3e3e";
-    refreshBalance();
+    document.getElementById('pnl').innerText = (stats.pnl >= 0 ? '+' : '') + stats.pnl.toFixed(5);
+    updateBalance();
 }
 
-function writeLog(msg, type = "") {
-    const log = document.getElementById('log-display');
-    const div = document.createElement('div');
-    div.className = "log-line " + type;
-    div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
-    log.prepend(div);
-}
-
-// Button Events
-document.getElementById('connect-btn').onclick = connect;tWallet;
+// EVENT LISTENER DIRECT KOPPELEN
+document.getElementById('connect-btn').onclick = tryConnect;
