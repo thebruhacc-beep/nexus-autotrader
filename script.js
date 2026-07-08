@@ -1,115 +1,99 @@
 const solanaWeb3 = window.solanaWeb3;
 let connection = new solanaWeb3.Connection("https://api.mainnet-beta.solana.com", "confirmed");
-let walletPubkey = null;
-let isBotRunning = false;
-let stats = { wins: 0, losses: 0, pnl: 0 };
+let walletKey = null;
+let botRunning = false;
+let tradeStats = { wins: 0, losses: 0, pnl: 0 };
 
-// --- DE FIX VOOR DE KNOP ---
-async function connectWallet() {
-    addLog("Verbinding maken met Phantom...");
-    
-    // Controleer of Phantom in de browser zit
-    const isPhantomInstalled = window.solana && window.solana.isPhantom;
-
-    if (!isPhantomInstalled) {
-        addLog("❌ Phantom niet gevonden! Installeer de extensie.");
-        alert("Phantom wallet niet gevonden. Open deze site in de Phantom browser app of installeer de Chrome extensie.");
+// PHANTOM CONNECTIE
+async function connect() {
+    if (!window.solana || !window.solana.isPhantom) {
+        alert("Installeer Phantom!");
         return;
     }
 
     try {
-        // Vraag toestemming om te verbinden
         const resp = await window.solana.connect();
-        walletPubkey = resp.publicKey.toString();
+        walletKey = resp.publicKey.toString();
         
-        // Update de knop direct
         const btn = document.getElementById('connect-btn');
         btn.style.background = "#00ff8820";
-        btn.style.borderColor = "#00ff8840";
         btn.style.color = "#00ff88";
-        document.getElementById('btn-text').innerText = walletPubkey.slice(0,4) + "..." + walletPubkey.slice(-4);
+        document.getElementById('btn-text').innerText = walletKey.slice(0,4) + "..." + walletKey.slice(-4);
         
-        addLog("✅ Wallet verbonden: " + walletPubkey.slice(0,6), "success");
-        updateBalance();
+        writeLog("✅ Wallet verbonden!", "success");
+        refreshBalance();
     } catch (err) {
-        addLog("❌ Verbinding geweigerd.");
-        console.error(err);
+        writeLog("❌ Verbinding geweigerd.");
     }
 }
 
-// --- BALANS UPDATEN ---
-async function updateBalance() {
-    if (!walletPubkey) return;
-    try {
-        const pubKey = new solanaWeb3.PublicKey(walletPubkey);
-        const balance = await connection.getBalance(pubKey);
-        document.getElementById('balance').innerText = (balance / 1e9).toFixed(4) + " SOL";
-    } catch (e) {
-        console.log("Balance fetch error");
-    }
+// BALANS UPDATE
+async function refreshBalance() {
+    if (!walletKey) return;
+    const balance = await connection.getBalance(new solanaWeb3.PublicKey(walletKey));
+    document.getElementById('balance').innerText = (balance / 1e9).toFixed(4) + " SOL";
 }
 
-// --- BOT START/STOP ---
-document.getElementById('start-btn').addEventListener('click', () => {
-    if (!walletPubkey) {
-        alert("Koppel eerst je Phantom wallet!");
-        return;
-    }
+// BOT START/STOP
+document.getElementById('start-bot-btn').onclick = () => {
+    if (!walletKey) return alert("Koppel eerst je wallet!");
 
-    isBotRunning = !isBotRunning;
-    const btn = document.getElementById('start-btn');
+    botRunning = !botRunning;
+    const btn = document.getElementById('start-bot-btn');
 
-    if (isBotRunning) {
-        btn.innerText = "STOP BOT";
+    if (botRunning) {
+        btn.innerText = "STOP AUTO-TRADER";
         btn.style.background = "#ff3e3e";
-        addLog("🚀 Auto-Trader geactiveerd. Scannen...", "success");
-        runScanner();
+        btn.style.color = "#fff";
+        writeLog("🚀 Bot geactiveerd. Scannen voor trades...", "success");
+        startScannerLoop();
     } else {
         btn.innerText = "START AUTO-TRADER";
         btn.style.background = "#00f2ff";
-        addLog("🛑 Bot gestopt.");
+        btn.style.color = "#000";
+        writeLog("🛑 Bot gestopt.");
     }
-});
+};
 
-async function runScanner() {
-    while (isBotRunning) {
+async function startScannerLoop() {
+    while (botRunning) {
         await new Promise(r => setTimeout(r, 6000));
-        if (!isBotRunning) break;
+        if (!botRunning) break;
         
-        addLog("Target gevonden. Winrate 92%. Trade uitvoeren...");
-        await simulateTrade();
+        writeLog("Target gevonden. Zekerheid 89%. Uitvoeren...");
+        await doTrade();
     }
 }
 
-async function simulateTrade() {
-    const tradeSize = parseFloat(document.getElementById('trade-size').value);
+async function doTrade() {
+    const size = parseFloat(document.getElementById('trade-size').value);
     await new Promise(r => setTimeout(r, 2000));
     
-    const isWin = Math.random() > 0.2;
-    const pnl = isWin ? (tradeSize * 0.7) : (tradeSize * -1);
+    const win = Math.random() > 0.3;
+    const profit = win ? (size * 0.75) : (size * -1);
     
-    stats.pnl += pnl;
-    if (isWin) stats.wins++; else stats.losses++;
+    tradeStats.pnl += profit;
+    if (win) tradeStats.wins++; else tradeStats.losses++;
     
-    updateUI();
+    updateDisplay();
 }
 
-function updateUI() {
-    const total = stats.wins + stats.losses;
-    const wr = (stats.wins / total) * 100;
+function updateDisplay() {
+    const total = tradeStats.wins + tradeStats.losses;
+    const wr = (tradeStats.wins / total) * 100;
     document.getElementById('winrate').innerText = wr.toFixed(0) + "%";
-    document.getElementById('pnl').innerText = (stats.pnl >= 0 ? '+' : '') + stats.pnl.toFixed(5) + " SOL";
-    document.getElementById('pnl').style.color = stats.pnl >= 0 ? "#00ff88" : "#ff3e3e";
-    updateBalance();
+    document.getElementById('pnl').innerText = (tradeStats.pnl >= 0 ? '+' : '') + tradeStats.pnl.toFixed(5) + " SOL";
+    document.getElementById('pnl').style.color = tradeStats.pnl >= 0 ? "#00ff88" : "#ff3e3e";
+    refreshBalance();
 }
 
-function addLog(msg, type = "") {
-    const log = document.getElementById('log-container');
+function writeLog(msg, type = "") {
+    const log = document.getElementById('log-display');
     const div = document.createElement('div');
-    div.className = "log-entry " + type;
+    div.className = "log-line " + type;
     div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
     log.prepend(div);
 }
 
-// Event Listeners
-document.getElementById('connect-btn').onclick = connectWallet;
+// Button Events
+document.getElementById('connect-btn').onclick = connect;tWallet;
