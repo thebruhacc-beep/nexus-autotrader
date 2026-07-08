@@ -8,49 +8,56 @@
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo">NEXUS<span>PRO</span></div>
-            <!-- KNOP ZONDER IMG TAG - GEEN BROKEN PHOTOS MEER -->
-            <button id="connect-btn" class="phantom-btn">
+    <div class="app-container">
+        <header class="main-header">
+            <div class="brand">NEXUS<span>PRO</span></div>
+            <button id="connect-btn" class="connect-wallet-btn">
                 <svg width="20" height="20" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="50" r="40" fill="white" opacity="0.8"/>
+                    <circle cx="50" cy="50" r="40" fill="white"/>
                 </svg>
                 <span id="btn-text">Connect Phantom</span>
             </button>
         </header>
 
-        <section class="dashboard">
-            <div class="stat-card"><span>Total PnL</span><h3 id="pnl">0.0000 SOL</h3></div>
-            <div class="stat-card"><span>Winrate</span><h3 id="winrate">--%</h3></div>
-            <div class="stat-card"><span>Wallet Balans</span><h3 id="balance">0.00 SOL</h3></div>
+        <section class="stats-overview">
+            <div class="stat-item">
+                <span class="label">Total PnL</span>
+                <div id="pnl" class="value">0.0000 SOL</div>
+            </div>
+            <div class="stat-item">
+                <span class="label">Winrate</span>
+                <div id="winrate" class="value">--%</div>
+            </div>
+            <div class="stat-item">
+                <span class="label">Wallet Balans</span>
+                <div id="balance" class="value">0.00 SOL</div>
+            </div>
         </section>
 
-        <div class="main-grid">
-            <aside class="controls">
-                <h3>Robot Settings</h3>
-                <div class="input-field">
+        <div class="dashboard-content">
+            <aside class="sidebar-settings">
+                <h3>Robot Config</h3>
+                <div class="input-box">
                     <label>Trade Size (SOL)</label>
                     <input type="number" id="trade-size" value="0.002" step="0.001">
                 </div>
-                <div class="input-field">
+                <div class="input-box">
                     <label>Min. Winrate Filter</label>
                     <input type="number" id="min-winrate" value="85">
                 </div>
-                <div class="input-field">
-                    <label>Network Fees</label>
-                    <div class="auto-fee-badge">DYNAMIC AUTO-FEE ON</div>
+                <div class="fee-info">
+                    <span class="fee-dot"></span> DYNAMIC AUTO-FEE ACTIVE
                 </div>
-                <button id="start-btn" class="glow-button">START AUTO-TRADER</button>
+                <button id="start-bot-btn" class="action-btn">START AUTO-TRADER</button>
             </aside>
 
-            <section class="terminal">
-                <div class="terminal-nav">
-                    <span>LIVE ACTIVITY SCANNER</span>
-                    <span id="open-positions">Open Positions: 0</span>
+            <section class="terminal-window">
+                <div class="terminal-top">
+                    <span>LIVE SCANNER FEED</span>
+                    <span id="pos-count">Positions: 0</span>
                 </div>
-                <div id="log-container" class="log-area">
-                    <div class="log-entry system">> Systeem klaar. Klik op Connect Phantom...</div>
+                <div id="log-display" class="log-content">
+                    <div class="log-line system">> Systeem standby. Wachten op wallet...</div>
                 </div>
             </section>
         </div>
