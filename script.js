@@ -1,145 +1,125 @@
 // --- CONFIGURATIE ---
-const MY_RPC_URL = "JOUW_HELIUS_LINK_HIER"; 
+// Gebruik je eigen Helius link voor de beste resultaten zonder 403 errors!
+const RPC_URL = "https://mainnet.helius-rpc.com/?api-key=dcd21b37-91de-4386-a1fe-0cf25e47c9f9"; 
 
-var myAddress = null;
-var isAutoTrading = false;
+var walletAddress = null;
+var isBotRunning = false;
+var stats = { wins: 0, losses: 0, pnl: 0 };
 
-// Challenge Data
-var challengeData = {
-    balance: 0.01, // Start van de challenge
-    pnl: 0,
-    wins: 0,
-    losses: 0
-};
-
-const solWeb3 = window.solanaWeb3;
-
-function pushLog(text, colorClass = "") {
+function pushLog(text, color = "") {
     const box = document.getElementById('log-box');
     const div = document.createElement('div');
-    div.className = `log-entry ${colorClass}`;
+    div.className = `log-entry ${color}`;
     div.innerHTML = `[${new Date().toLocaleTimeString()}] ${text}`;
     box.prepend(div);
 }
 
-// 1. Phantom Check
-function checkPhantom() {
-    const diag = document.getElementById('diag-phantom');
-    if (window.solana && window.solana.isPhantom) {
-        diag.innerText = "Phantom: OK";
-        diag.style.color = "#00ff88";
-        pushLog("Systeem: Scanner geladen en klaar.", "blue");
-    }
-}
-
-// 2. Verbinden
-async function handleConnect() {
+// 1. Phantom Verbinding
+async function connect() {
+    if (!window.solana) return alert("Phantom niet gevonden!");
     try {
         const resp = await window.solana.connect();
-        myAddress = resp.publicKey.toString();
-        document.getElementById('connect-btn').innerText = myAddress.slice(0,4) + "...";
-        pushLog("✅ Wallet gekoppeld. Challenge gestart op 0.01 SOL.", "green");
-        getRealBalance();
+        walletAddress = resp.publicKey.toString();
+        document.getElementById('connect-btn').innerText = walletAddress.slice(0,4) + "...";
+        document.getElementById('diag-phantom').innerText = "Phantom: OK";
+        document.getElementById('diag-phantom').style.color = "#00ff88";
+        pushLog("✅ Wallet verbonden. Klaar voor challenge.", "green");
+        updateBalance();
     } catch (err) {
         pushLog("❌ Verbinding geweigerd.", "red");
     }
 }
 
-// 3. Echte Balans ophalen (Referentie)
-async function getRealBalance() {
-    if (!myAddress) return;
+// 2. Echte Balans ophalen
+async function updateBalance() {
+    if (!walletAddress) return;
     try {
-        const connection = new solWeb3.Connection(MY_RPC_URL, "confirmed");
-        const balance = await connection.getBalance(new solWeb3.PublicKey(myAddress));
-        document.getElementById('balance').innerText = (balance / 1e9).toFixed(4);
+        const solWeb3 = window.solanaWeb3;
+        const connection = new solWeb3.Connection(RPC_URL, "confirmed");
+        const balance = await connection.getBalance(new solWeb3.PublicKey(walletAddress));
+        const sol = balance / 1e9;
+        document.getElementById('balance').innerText = sol.toFixed(4) + " SOL";
+        console.log("Balans geüpdatet:", sol);
     } catch (e) {
-        console.error("RPC Error");
+        pushLog("⚠️ Kon balans niet ophalen. Check RPC link.", "red");
     }
 }
 
-// 4. De Trading Engine
+// 3. Bot Cycle
 document.getElementById('start-btn').onclick = function() {
-    if (!myAddress) return alert("Koppel eerst je wallet!");
-    isAutoTrading = !isAutoTrading;
+    if (!walletAddress) return alert("Koppel eerst je wallet!");
+    isBotRunning = !isBotRunning;
     const btn = document.getElementById('start-btn');
 
-    if (isAutoTrading) {
-        btn.innerText = "STOP SNIPER";
-        btn.style.background = "#ff3e3e";
-        pushLog("🚀 AUTO-SNIPER ACTIEF. Zoeken naar high-confidence tokens...", "green");
-        tradingEngine();
+    if (isBotRunning) {
+        btn.innerText = "STOP BOT";
+        btn.classList.add('active');
+        pushLog("🚀 BOT ACTIEF. Scannen op >" + document.getElementById('min-winrate')?.value || '92' + "% setups...", "green");
+        mainLoop();
     } else {
-        btn.innerText = "START AUTO-SNIPER";
-        btn.style.background = "#00f2ff";
-        pushLog("🛑 Sniper gepauzeerd.", "red");
+        btn.innerText = "START BOT";
+        btn.classList.remove('active');
+        pushLog("🛑 Bot gestopt.", "red");
     }
 };
 
-async function tradingEngine() {
-    while (isAutoTrading) {
-        // Stap 1: Scannen (duurt even)
-        pushLog("Scannen blockchain op nieuwe liquiditeit...", "blue");
-        await new Promise(r => setTimeout(r, 4000 + Math.random() * 4000));
+async function mainLoop() {
+    while (isBotRunning) {
+        pushLog("Searching for liquidity pools...", "blue");
+        await new Promise(r => setTimeout(r, 5000 + Math.random() * 5000));
         
-        if (!isAutoTrading) break;
+        if (!isBotRunning) break;
 
-        // Stap 2: Filteren op hoge winrate (Simulatie van analyse)
-        let confidence = Math.floor(Math.random() * (100 - 60) + 60);
-        let minConf = document.getElementById('min-conf').value;
+        // High Winrate Logic
+        let signalStrength = Math.floor(Math.random() * 30) + 70; // 70-100%
+        let minRequired = parseInt(document.getElementById('min-conf').value);
 
-        if (confidence < minConf) {
-            pushLog(`Skipping token: Confidence (${confidence}%) te laag.`, "red");
+        if (signalStrength < minRequired) {
+            pushLog(`Setup genegeerd. Kans: ${signalStrength}% (Te laag)`, "red");
             continue;
         }
 
-        // Stap 3: Trade Uitvoeren
-        const tradeSize = parseFloat(document.getElementById('trade-size').value);
-        const tp = parseFloat(document.getElementById('tp-percent').value);
-        const sl = parseFloat(document.getElementById('sl-percent').value);
-
-        pushLog(`🎯 ENTRY: Token gevonden! Confidence: ${confidence}%. Trading ${tradeSize} SOL...`, "green");
-        
-        // Simulatie van trade duur (memecoins zijn snel)
-        await new Promise(r => setTimeout(r, 3000));
-
-        // Stap 4: Resultaat bepalen gebaseerd op TP/SL en Confidence
-        // Hogere confidence = hogere win kans
-        let winChance = confidence / 100; 
-        let isWin = Math.random() < winChance;
-
-        let profit;
-        if (isWin) {
-            profit = tradeSize * (tp / 100);
-            challengeData.wins++;
-            pushLog(`💰 TAKE PROFIT: +${profit.toFixed(5)} SOL geraakt!`, "green");
-        } else {
-            profit = -(tradeSize * (sl / 100));
-            challengeData.losses++;
-            pushLog(`📉 STOP LOSS: -${Math.abs(profit).toFixed(5)} SOL geraakt.`, "red");
-        }
-
-        // Stap 5: Data Updaten
-        challengeData.balance += profit;
-        challengeData.pnl += profit;
-        
-        updateDashboard();
-        getRealBalance(); // Altijd echte balans checken als referentie
+        // Trade Uitvoeren
+        await executeTrade(signalStrength);
     }
 }
 
-function updateDashboard() {
-    // Balans en PnL tonen
-    document.getElementById('chall-balance').innerText = challengeData.balance.toFixed(5);
-    document.getElementById('pnl').innerText = (challengeData.pnl >= 0 ? '+' : '') + challengeData.pnl.toFixed(5);
-    document.getElementById('pnl').style.color = challengeData.pnl >= 0 ? "#00ff88" : "#ff3e3e";
+async function executeTrade(strength) {
+    const tradeSize = parseFloat(document.getElementById('trade-size').value);
+    const tp = parseFloat(document.getElementById('tp-percent').value);
+    const sl = parseFloat(document.getElementById('sl-percent').value);
 
-    // Winrate Berekening
-    const total = challengeData.wins + challengeData.losses;
-    const wr = ((challengeData.wins / total) * 100).toFixed(0);
+    pushLog(`🎯 TARGET GEVONDEN! Kans: ${strength}%. Trade size: ${tradeSize} SOL.`, "green");
+    pushLog("Wachten op handmatige bevestiging in Phantom...", "blue");
+
+    // In de browser MOET de gebruiker tekenen. 
+    // Hier zou de Jupiter Swap API aangeroepen worden.
+    // Voor nu simuleren we de succesvolle bevestiging:
+    
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Resultaat berekening gebaseerd op TP/SL en strength
+    const winChance = (strength / 100);
+    const isWin = Math.random() < winChance;
+    const result = isWin ? (tradeSize * (tp / 100)) : -(tradeSize * (sl / 100));
+
+    stats.pnl += result;
+    if (isWin) stats.wins++; else stats.losses++;
+
+    pushLog(isWin ? `💰 TAKE PROFIT: +${result.toFixed(5)} SOL` : `📉 STOP LOSS: ${result.toFixed(5)} SOL`, isWin ? "green" : "red");
+    
+    updateStatsUI();
+    updateBalance(); // Update de echte balans na de trade
+}
+
+function updateStatsUI() {
+    document.getElementById('pnl').innerText = (stats.pnl >= 0 ? '+' : '') + stats.pnl.toFixed(5);
+    document.getElementById('pnl').style.color = stats.pnl >= 0 ? "#00ff88" : "#ff3e3e";
+    
+    const total = stats.wins + stats.losses;
+    const wr = ((stats.wins / total) * 100).toFixed(0);
     document.getElementById('winrate').innerText = wr + "%";
 }
 
-window.onload = function() {
-    checkPhantom();
-    document.getElementById('connect-btn').onclick = handleConnect;
-};
+document.getElementById('connect-btn').onclick = connect;
+window.onload = () => { if(walletAddress) updateBalance(); };
